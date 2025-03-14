@@ -3,35 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Verifier</title>
+    <title>RITI - QR Scanner</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background-color: #f0f0f0;
+        }
+        .header {
+            background-color: #34C759;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .scanner-section {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .scanner-container {
+            max-width: 400px;
+            margin: 40px auto;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .scanner {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 2px;
+            background-color: #34C759;
+        }
+        #loadingState, #successState, #errorState {
+            margin-top: 20px;
+        }
+        .participant-card {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 10px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .detail-label {
+            font-weight: bold;
+        }
+    </style>
 </head>
-<body class="bg-light">
+<body>
+    <header class="header">
+        <h1>Riti - The Upcycling Club</h1>
+        <p>Join us in making a sustainable difference!</p>
+    </header>
+
     <div class="container-fluid">
-        <div class="row">
-            <!-- Left side - Scanner -->
-            <div class="col-md-6 scanner-section">
-                <div class="scanner-container">
-                    <h2 class="text-center mb-4">Scan QR Code</h2>
-                    <div class="video-container">
-                        <video id="preview" class="scanner"></video>
-                        <div class="scanner-overlay">
-                            <div class="scanner-line"></div>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="scanner-section">
+                    <div class="scanner-container">
+                        <h2>Scan Participant QR Code</h2>
+                        <div class="video-container">
+                            <video id="preview" class="scanner"></video>
+                            <div class="scanner-overlay">
+                                <div class="scanner-line"></div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <button id="toggleCamera" class="btn btn-primary">
+                                <i class="fas fa-camera-rotate"></i> Switch Camera
+                            </button>
                         </div>
                     </div>
-                    <div class="text-center mt-4">
-                        <button id="toggleCamera" class="btn btn-primary">
-                            <i class="fas fa-camera"></i> Switch Camera
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Right side - Results -->
-            <div class="col-md-6 results-section">
-                <div class="results-container">
                     <div id="loadingState" class="text-center d-none">
                         <div class="spinner">
                             <div class="double-bounce1"></div>
@@ -45,8 +121,6 @@
                             <div class="check-icon">
                                 <span class="icon-line line-tip"></span>
                                 <span class="icon-line line-long"></span>
-                                <div class="icon-circle"></div>
-                                <div class="icon-fix"></div>
                             </div>
                         </div>
                         <h3 class="text-success mb-4">Participant Verified!</h3>
@@ -60,6 +134,7 @@
                             </div>
                         </div>
                         <h3 class="text-danger mb-4">Participant Not Found</h3>
+                        <p>Please try scanning again</p>
                     </div>
 
                     <div id="participantDetails" class="participant-card d-none">
