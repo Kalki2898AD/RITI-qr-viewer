@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riti - The Upcycling Club</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RITI QR Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
         body {
             background-color: #2f2f2f;
@@ -20,36 +20,44 @@
             border-radius: 10px;
             overflow: hidden;
         }
-        .qr-scanner {
-            width: 100%;
-            height: 100%;
-        }
-        .scanner-overlay {
+        .scanner-frame {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-        .scan-area {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 80%;
             border: 2px solid #34C759;
             border-radius: 10px;
         }
-        .scan-line {
+        .corner {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 2px;
-            background-color: #34C759;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #34C759;
+        }
+        .top-left {
+            top: 0;
+            left: 0;
+            border-top: none;
+            border-left: none;
+        }
+        .top-right {
+            top: 0;
+            right: 0;
+            border-top: none;
+            border-right: none;
+        }
+        .bottom-left {
+            bottom: 0;
+            left: 0;
+            border-bottom: none;
+            border-left: none;
+        }
+        .bottom-right {
+            bottom: 0;
+            right: 0;
+            border-bottom: none;
+            border-right: none;
         }
         .loading-spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -88,83 +96,82 @@
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="text-center mb-4">
-            <img src="/logo.png" alt="Riti Logo" class="mb-3" style="height: 48px;">
-            <h1>Riti QR Scanner</h1>
-            <p>Scan participant QR code to verify details</p>
+<body class="bg-dark">
+    <div class="container py-4">
+        <h1 class="text-center mb-2">RITI QR Scanner</h1>
+        <p class="text-center text-muted mb-4">Scan participant QR code to verify details</p>
+
+        <div class="scanner-container mb-4">
+            <div id="qr-reader"></div>
+            
+            <!-- Loading State -->
+            <div id="loadingState" class="d-none text-center">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="d-none"></div>
         </div>
 
-        <div class="card">
-            <div class="card-body">
-                <div class="text-center mb-3">
-                    <h2>Scan QR Code</h2>
-                    <p class="text-muted">Place the QR code inside the frame</p>
+        <!-- Participant Details -->
+        <div id="participantDetails" class="d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Participant Details</h5>
                 </div>
-
-                <div class="scanner-container">
-                    <div class="qr-scanner">
-                        <video id="preview"></video>
-                        <div class="scanner-overlay">
-                            <div class="scan-area">
-                                <div></div>
-                            </div>
-                            <div class="scan-line"></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Name:</strong></p>
+                            <p id="participantName" class="text-success">-</p>
                         </div>
-                    </div>
-                </div>
-
-                <div id="loadingState" class="text-center mt-4 d-none">
-                    <div class="loading-spinner"></div>
-                    <p class="mt-2">Verifying participant...</p>
-                </div>
-
-                <div id="participantDetails" class="mt-4 d-none">
-                    <div class="bg-gray-50">
-                        <h3>Participant Details</h3>
-                        <div class="details-list">
-                            <div class="detail-row">
-                                <span class="label">Name</span>
-                                <span id="participantName" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Hall Ticket</span>
-                                <span id="participantHallTicket" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Branch</span>
-                                <span id="participantBranch" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Year</span>
-                                <span id="participantYear" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Section</span>
-                                <span id="participantSection" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Package</span>
-                                <span id="participantPackage" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Payment</span>
-                                <span id="participantPayment" class="value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Amount</span>
-                                <span id="participantAmount" class="value"></span>
-                            </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Hall Ticket:</strong></p>
+                            <p id="participantHallTicket" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Branch:</strong></p>
+                            <p id="participantBranch" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Year:</strong></p>
+                            <p id="participantYear" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Section:</strong></p>
+                            <p id="participantSection" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Package:</strong></p>
+                            <p id="participantPackage" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Payment Status:</strong></p>
+                            <p id="participantPayment" class="text-success">-</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Amount Paid:</strong></p>
+                            <p id="participantAmount" class="text-success">-</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Help Text -->
+        <div class="text-center">
+            <p class="text-muted mb-2">Having trouble?</p>
+            <ul class="list-unstyled">
+                <li>Allow camera access when prompted</li>
+                <li>Use the back camera for better scanning</li>
+                <li>Hold the QR code steady within the frame</li>
+                <li>Ensure good lighting conditions</li>
+            </ul>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,10 +1,6 @@
-// Initialize QR scanner
-let scanner = null;
-
 // Elements
-const videoPreview = document.getElementById('preview');
+const qrReader = document.getElementById('qr-reader');
 const loadingState = document.getElementById('loadingState');
-const successState = document.getElementById('successState');
 const errorState = document.getElementById('errorState');
 const participantDetails = document.getElementById('participantDetails');
 
@@ -18,152 +14,119 @@ const participantPackage = document.getElementById('participantPackage');
 const participantPayment = document.getElementById('participantPayment');
 const participantAmount = document.getElementById('participantAmount');
 
-// Function to initialize camera
-async function initializeCamera() {
+let html5QrcodeScanner = null;
+
+// Initialize QR Scanner
+function startScanner() {
     try {
-        // First check if we're in a secure context
-        if (!window.isSecureContext) {
-            throw new Error('Secure context required');
-        }
+        // Reset UI
+        loadingState.classList.remove('d-none');
+        errorState.classList.add('d-none');
+        participantDetails.classList.add('d-none');
 
-        // Check if mediaDevices API is available
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera API not available');
-        }
-
-        // Request camera permission explicitly
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: {
-                    ideal: 'environment' // Prefer back camera
-                }
+        // Create scanner with simple config
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader",
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                showTorchButtonIfSupported: true,
+                showZoomSliderIfSupported: true,
+                defaultZoomValueIfSupported: 2
             }
-        });
+        );
 
-        // Stop the stream as Instascan will request it again
-        stream.getTracks().forEach(track => track.stop());
-
-        // Create scanner instance
-        scanner = new Instascan.Scanner({
-            video: videoPreview,
-            mirror: false,
-            backgroundScan: false,
-            continuous: true
-        });
-
-        // Handle successful scans
-        scanner.addListener('scan', handleQRScan);
-
-        // Get available cameras
-        const cameras = await Instascan.Camera.getCameras();
-        
-        if (cameras.length === 0) {
-            throw new Error('No cameras found');
-        }
-
-        // Try to get the back camera
-        const backCamera = cameras.find(camera => 
-            camera.name.toLowerCase().includes('back') || 
-            camera.name.toLowerCase().includes('rear') ||
-            camera.name.toLowerCase().includes('environment')
-        ) || cameras[0];
-
-        // Start the scanner
-        await scanner.start(backCamera);
-        console.log('Camera started successfully');
+        // Start scanning
+        html5QrcodeScanner.render(handleQRScan, handleQRError);
+        loadingState.classList.add('d-none');
 
     } catch (error) {
-        console.error('Camera initialization error:', error);
-        let errorMessage = 'Error accessing camera. ';
-
-        switch(error.name) {
-            case 'NotAllowedError':
-                errorMessage += 'Please allow camera access to scan QR codes.';
-                break;
-            case 'NotFoundError':
-                errorMessage += 'No camera found on your device.';
-                break;
-            case 'NotReadableError':
-                errorMessage += 'Camera is already in use or not accessible.';
-                break;
-            default:
-                if (!window.isSecureContext) {
-                    errorMessage += 'Camera access requires HTTPS. Please use a secure connection.';
-                } else if (error.message === 'Secure context required') {
-                    errorMessage += 'Please access this page via HTTPS.';
-                } else if (error.message === 'Camera API not available') {
-                    errorMessage += 'Your browser does not support camera access.';
-                } else {
-                    errorMessage += 'Please ensure you have a camera and have given permissions.';
-                }
-        }
-
-        alert(errorMessage);
+        console.error('Scanner error:', error);
+        loadingState.classList.add('d-none');
+        errorState.textContent = 'Error starting scanner. Please refresh and try again.';
+        errorState.classList.remove('d-none');
     }
 }
 
-// Start scanner when page loads
-document.addEventListener('DOMContentLoaded', initializeCamera);
-
-// Handle QR code scan
-async function handleQRScan(content) {
+// Handle QR scan success
+async function handleQRScan(decodedText) {
     try {
-        // Show loading state
         loadingState.classList.remove('d-none');
         participantDetails.classList.add('d-none');
+        errorState.classList.add('d-none');
 
-        // Parse QR code content
-        const data = JSON.parse(content);
-
-        // Validate required fields
-        if (!data.id || !data.name) {
-            throw new Error('Invalid QR code format');
+        let data;
+        try {
+            data = JSON.parse(decodedText);
+        } catch (e) {
+            data = { id: decodedText };
+        }
+        
+        if (!data.id) {
+            throw new Error('Invalid QR code');
         }
 
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const response = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: data.id })
+        });
 
-        // Update participant details
-        participantName.textContent = data.name || 'N/A';
-        participantHallTicket.textContent = data.hallTicket || 'N/A';
-        participantBranch.textContent = data.branch || 'N/A';
-        participantYear.textContent = data.year || 'N/A';
-        participantSection.textContent = data.section || 'N/A';
-        participantPackage.textContent = data.package || 'N/A';
-        participantPayment.textContent = data.payment || 'N/A';
-        participantAmount.textContent = data.amount ? `₹${data.amount}` : 'N/A';
+        if (!response.ok) {
+            throw new Error('Failed to verify participant');
+        }
 
-        // Show participant details
+        const participant = await response.json();
+
+        participantName.textContent = participant.name || 'N/A';
+        participantHallTicket.textContent = participant.hallTicket || 'N/A';
+        participantBranch.textContent = participant.branch || 'N/A';
+        participantYear.textContent = participant.year || 'N/A';
+        participantSection.textContent = participant.section || 'N/A';
+        participantPackage.textContent = participant.package || 'N/A';
+        participantPayment.textContent = participant.payment || 'N/A';
+        participantAmount.textContent = participant.amount ? `₹${participant.amount}` : 'N/A';
+
         loadingState.classList.add('d-none');
         participantDetails.classList.remove('d-none');
 
         // Play success sound
-        const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV');
-        audio.play();
+        new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV').play();
+
+        // Pause scanning for a moment
+        html5QrcodeScanner.pause();
+        setTimeout(() => {
+            html5QrcodeScanner.resume();
+        }, 2000);
 
     } catch (error) {
-        console.error('Error processing QR code:', error);
-        
-        // Hide loading state
+        console.error('QR scan error:', error);
         loadingState.classList.add('d-none');
         participantDetails.classList.add('d-none');
-
-        // Play error sound
-        const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV');
-        audio.play();
-        
-        // Show error message
-        alert('Error scanning QR code. Please try again.');
+        errorState.textContent = 'Invalid QR code. Please try again.';
+        errorState.classList.remove('d-none');
     }
 }
 
-// Handle visibility change to pause/resume scanner
-document.addEventListener('visibilitychange', function() {
-    if (scanner) {
-        if (document.hidden) {
-            scanner.stop();
-        } else {
-            initializeCamera().catch(console.error);
+// Handle QR scan error
+function handleQRError(error) {
+    // Ignore errors, just keep scanning
+    console.log('QR scan error (ignored):', error);
+}
+
+// Clean up when page is hidden/closed
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.pause();
+        }
+    } else {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.resume();
         }
     }
 });
+
+// Start scanner when page loads
+document.addEventListener('DOMContentLoaded', startScanner);
