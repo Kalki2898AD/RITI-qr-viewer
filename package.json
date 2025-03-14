@@ -1,7 +1,7 @@
 {
   "name": "riti-qr-viewer",
   "version": "1.0.0",
-  "description": "QR code verification system for RITI participants",
+  "description": "QR code scanner for RITI participant verification",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -15,5 +15,16 @@
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kalki2898AD/RITI-qr-viewer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kalki2898AD/RITI-qr-viewer/issues"
+  },
+  "homepage": "https://github.com/Kalki2898AD/RITI-qr-viewer#readme"
 }

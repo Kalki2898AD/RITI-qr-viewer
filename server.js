@@ -3,12 +3,34 @@ const cors = require('cors');
 const { google } = require('googleapis');
 const path = require('path');
 require('dotenv').config();
+const fs = require('fs');
 
 // Set OpenSSL configuration
 process.env.OPENSSL_CONF = '/dev/null';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configure Google Sheets API
+const auth = new google.auth.GoogleAuth({
+    credentials: {
+        type: 'service_account',
+        project_id: 'zap-kitchen',
+        private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        client_email: process.env.GOOGLE_CLIENT_EMAIL || 'ritiactivityserviceaccount@zap-kitchen.iam.gserviceaccount.com',
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: 'https://oauth2.googleapis.com/token',
+        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+        client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
+});
+
+const sheets = google.sheets({ version: 'v4', auth });
+const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID || '1DLyBNPzyYkHHyZNZoUWkWe8HgGHqCVDqPY2Zz_8Gy1I';
+const RANGE = process.env.GOOGLE_SHEET_RANGE || 'Form Responses 1!A2:J';
 
 // Middleware
 app.use(cors());
@@ -43,63 +65,59 @@ const logger = {
     error: (...args) => console.error('[ERROR]', ...args)
 };
 
-// Google Sheets Configuration
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '1wVWWOjFWaSqgR0pHCUvjwdxfscwxN2lK9uA_WW4ZrbU';
-
-// Create auth client
-const getAuthClient = () => {
+// API endpoint to verify participant
+app.post('/api/verify', async (req, res) => {
     try {
-        const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n');
-        if (!privateKey) {
-            throw new Error('Private key is missing');
+        const { id } = req.body;
+        
+        if (!id) {
+            return res.status(400).json({ error: 'Missing participant ID' });
         }
 
-        return new google.auth.GoogleAuth({
-            credentials: {
-                client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL || 'ritiactivityserviceaccount@zap-kitchen.iam.gserviceaccount.com',
-                private_key: privateKey
-            },
-            scopes: ['https://www.googleapis.com/auth/spreadsheets']
-        });
-    } catch (error) {
-        logger.error('Auth client creation error:', error);
-        throw error;
-    }
-};
-
-// Test connection on startup
-(async () => {
-    try {
-        const auth = await getAuthClient();
-        const client = await auth.getClient();
-        logger.info('Successfully created auth client');
-
-        const sheets = google.sheets({ version: 'v4', auth: client });
+        // Get data from Google Sheets
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Sheet1!A1:A1'
+            range: RANGE
         });
-        logger.info('Successfully accessed Google Sheet:', response.data);
+
+        const rows = response.data.values;
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ error: 'No data found' });
+        }
+
+        // Find participant by QR code ID
+        const participant = rows.find(row => row[9] === id); // Assuming QR code ID is in column J
+        if (!participant) {
+            return res.status(404).json({ error: 'Participant not found' });
+        }
+
+        // Map participant data
+        const participantData = {
+            name: participant[1] || 'N/A', // Name (Column B)
+            hallTicket: participant[2] || 'N/A', // Hall Ticket (Column C)
+            branch: participant[3] || 'N/A', // Branch (Column D)
+            year: participant[4] || 'N/A', // Year (Column E)
+            section: participant[5] || 'N/A', // Section (Column F)
+            package: participant[6] || 'N/A', // Package (Column G)
+            payment: participant[7] || 'N/A', // Payment Method (Column H)
+            amount: participant[8] || 'N/A' // Amount (Column I)
+        };
+
+        res.json(participantData);
+
     } catch (error) {
-        logger.error('Google Sheets connection error:', {
-            message: error.message,
-            code: error.code,
-            response: error.response?.data
-        });
+        logger.error('Error verifying participant:', error);
+        res.status(500).json({ error: 'Failed to verify participant' });
     }
-})();
+});
 
 // Participant verification endpoint
 app.get('/api/participant/:id', async (req, res) => {
     try {
-        const auth = await getAuthClient();
-        const client = await auth.getClient();
-        logger.info('Successfully created auth client for verification');
-
-        const sheets = google.sheets({ version: 'v4', auth: client });
+        const participantId = req.params.id;
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Sheet1'
+            range: RANGE
         });
 
         const rows = response.data.values;
@@ -111,7 +129,6 @@ app.get('/api/participant/:id', async (req, res) => {
         }
 
         // Find participant by ID
-        const participantId = req.params.id;
         const participant = rows.find(row => row[0] === participantId);
 
         if (!participant) {
