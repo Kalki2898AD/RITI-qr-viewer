@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RITI - QR Verification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="verification-container">
+            <div class="header">
+                <h1>RITI QR Verification</h1>
+                <p>Scan participant QR code to verify registration</p>
+            </div>
+
+            <div class="scanner-container">
+                <video id="preview" class="scanner"></video>
+                <div id="loading" class="loading-overlay d-none">
+                    <div class="spinner-border text-light" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="result" class="result-container d-none">
+                <div id="success-animation" class="checkmark-circle d-none">
+                    <div class="background"></div>
+                    <div class="checkmark draw"></div>
+                </div>
+                <div id="error-animation" class="error-circle d-none">
+                    <div class="background"></div>
+                    <div class="cross draw"></div>
+                </div>
+                <div class="participant-details mt-4">
+                    <h3>Participant Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="label">ID:</span>
+                            <span id="participantId" class="value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Name:</span>
+                            <span id="participantName" class="value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Hall Ticket:</span>
+                            <span id="participantHallTicket" class="value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Package:</span>
+                            <span id="participantPackage" class="value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Payment:</span>
+                            <span id="participantPayment" class="value"></span>
+                        </div>
+                    </div>
+                </div>
+                <button id="scanAgain" class="btn btn-primary mt-4">Scan Another</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
