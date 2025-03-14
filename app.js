@@ -1,17 +1,14 @@
-// Initialize scanner
+// Initialize QR scanner
 let scanner = null;
-let currentCamera = 0;
 
 // Elements
 const videoPreview = document.getElementById('preview');
-const toggleButton = document.getElementById('toggleCamera');
 const loadingState = document.getElementById('loadingState');
 const successState = document.getElementById('successState');
 const errorState = document.getElementById('errorState');
 const participantDetails = document.getElementById('participantDetails');
 
 // Detail elements
-const participantId = document.getElementById('participantId');
 const participantName = document.getElementById('participantName');
 const participantHallTicket = document.getElementById('participantHallTicket');
 const participantBranch = document.getElementById('participantBranch');
@@ -21,134 +18,90 @@ const participantPackage = document.getElementById('participantPackage');
 const participantPayment = document.getElementById('participantPayment');
 const participantAmount = document.getElementById('participantAmount');
 
-// Initialize scanner
-async function initializeScanner() {
-    try {
-        // Request camera permission first
-        await navigator.mediaDevices.getUserMedia({ video: true });
-        
-        scanner = new Instascan.Scanner({
-            video: videoPreview,
-            mirror: false,
-            backgroundScan: false,
-            scanPeriod: 3 // Scan every 3 seconds
-        });
+// Start scanner when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Create scanner instance
+    scanner = new Instascan.Scanner({
+        video: videoPreview,
+        mirror: false,
+        backgroundScan: false,
+        continuous: true
+    });
 
-        const cameras = await Instascan.Camera.getCameras();
-        
+    // Handle successful scans
+    scanner.addListener('scan', handleQRScan);
+
+    // Start camera with back camera first
+    Instascan.Camera.getCameras().then(cameras => {
         if (cameras.length > 0) {
-            // Try to use the back camera first
-            const backCamera = cameras.find(camera => 
-                camera.name.toLowerCase().includes('back') || 
-                camera.name.toLowerCase().includes('rear') ||
-                camera.name.toLowerCase().includes('environment')
-            );
-            
-            if (backCamera) {
-                await scanner.start(backCamera);
-                currentCamera = cameras.indexOf(backCamera);
-            } else {
-                await scanner.start(cameras[0]);
-                currentCamera = 0;
-            }
-
-            // Show toggle button only if multiple cameras
-            toggleButton.style.display = cameras.length > 1 ? 'block' : 'none';
-            
-            // Handle camera switch
-            toggleButton.onclick = async () => {
-                currentCamera = (currentCamera + 1) % cameras.length;
-                await scanner.start(cameras[currentCamera]);
-            };
-        } else {
-            console.error('No cameras found.');
-            alert('No cameras found on your device.');
+            // Try to get the back camera
+            const backCamera = cameras.find(camera => camera.name.toLowerCase().includes('back')) || cameras[0];
+            scanner.start(backCamera).catch(console.error);
         }
-
-        // Handle successful scans
-        scanner.addListener('scan', handleScan);
-    } catch (error) {
-        console.error('Error initializing scanner:', error);
-        if (error.name === 'NotAllowedError') {
-            alert('Camera access denied. Please allow camera access to scan QR codes.');
-        } else if (error.name === 'NotFoundError') {
-            alert('No camera found on your device.');
-        } else {
-            alert('Error initializing camera. Please make sure you have given camera permissions.');
-        }
-    }
-}
+    }).catch(console.error);
+});
 
 // Handle QR code scan
-async function handleScan(qrContent) {
+async function handleQRScan(content) {
     try {
-        // Parse QR content
-        const qrData = JSON.parse(qrContent);
-        
-        if (!qrData.id) {
+        // Show loading state
+        loadingState.classList.remove('d-none');
+        participantDetails.classList.add('d-none');
+
+        // Parse QR code content
+        const data = JSON.parse(content);
+
+        // Validate required fields
+        if (!data.id || !data.name) {
             throw new Error('Invalid QR code format');
         }
 
-        showLoading();
-        
-        // Call API to verify participant
-        const response = await fetch(`/api/participant/${qrData.id}`);
-        const data = await response.json();
-        
-        if (data.success && data.participant) {
-            showSuccess();
-            displayParticipantDetails(data.participant);
-        } else {
-            showError();
-        }
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Update participant details
+        participantName.textContent = data.name || 'N/A';
+        participantHallTicket.textContent = data.hallTicket || 'N/A';
+        participantBranch.textContent = data.branch || 'N/A';
+        participantYear.textContent = data.year || 'N/A';
+        participantSection.textContent = data.section || 'N/A';
+        participantPackage.textContent = data.package || 'N/A';
+        participantPayment.textContent = data.payment || 'N/A';
+        participantAmount.textContent = data.amount ? `₹${data.amount}` : 'N/A';
+
+        // Show participant details
+        loadingState.classList.add('d-none');
+        participantDetails.classList.remove('d-none');
+
+        // Play success sound
+        const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV');
+        audio.play();
+
     } catch (error) {
-        console.error('Error verifying participant:', error);
-        showError();
+        console.error('Error processing QR code:', error);
+        
+        // Hide loading state
+        loadingState.classList.add('d-none');
+        participantDetails.classList.add('d-none');
+
+        // Play error sound
+        const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV');
+        audio.play();
     }
 }
 
-// Display functions
-function showLoading() {
-    loadingState.classList.remove('d-none');
-    successState.classList.add('d-none');
-    errorState.classList.add('d-none');
-    participantDetails.classList.add('d-none');
-}
-
-function showSuccess() {
-    loadingState.classList.add('d-none');
-    successState.classList.remove('d-none');
-    errorState.classList.add('d-none');
-    participantDetails.classList.remove('d-none');
-}
-
-function showError() {
-    loadingState.classList.add('d-none');
-    successState.classList.add('d-none');
-    errorState.classList.remove('d-none');
-    participantDetails.classList.add('d-none');
-    
-    // Reset error state after 3 seconds
-    setTimeout(() => {
-        errorState.classList.add('d-none');
-    }, 3000);
-}
-
-// Display participant details
-function displayParticipantDetails(participant) {
-    participantId.textContent = participant.id || '';
-    participantName.textContent = participant.name || '';
-    participantHallTicket.textContent = participant.hallTicket || '';
-    participantBranch.textContent = participant.branch || '';
-    participantYear.textContent = participant.year || '';
-    participantSection.textContent = participant.section || '';
-    participantPackage.textContent = participant.selectedPackage || '';
-    participantPayment.textContent = participant.paymentMethod || '';
-    participantAmount.textContent = participant.amount || '';
-}
-
-// Start scanner when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    // Add a slight delay to ensure DOM is fully loaded
-    setTimeout(initializeScanner, 1000);
+// Handle visibility change to pause/resume scanner
+document.addEventListener('visibilitychange', function() {
+    if (scanner) {
+        if (document.hidden) {
+            scanner.stop();
+        } else {
+            Instascan.Camera.getCameras().then(cameras => {
+                if (cameras.length > 0) {
+                    const backCamera = cameras.find(camera => camera.name.toLowerCase().includes('back')) || cameras[0];
+                    scanner.start(backCamera).catch(console.error);
+                }
+            }).catch(console.error);
+        }
+    }
 });

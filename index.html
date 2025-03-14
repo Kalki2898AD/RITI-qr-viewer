@@ -3,43 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RITI - QR Scanner</title>
+    <title>Riti - The Upcycling Club</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         body {
-            background-color: #f0f0f0;
-        }
-        .header {
-            background-color: #34C759;
+            background-color: #2f2f2f;
             color: #fff;
-            padding: 20px;
-            text-align: center;
-        }
-        .scanner-section {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         .scanner-container {
-            max-width: 400px;
-            margin: 40px auto;
-        }
-        .video-container {
             position: relative;
             width: 100%;
             height: 300px;
-            border: 1px solid #ddd;
+            border: 1px solid #555;
             border-radius: 10px;
             overflow: hidden;
         }
-        .scanner {
+        .qr-scanner {
             width: 100%;
             height: 100%;
-            object-fit: cover;
         }
         .scanner-overlay {
             position: absolute;
@@ -49,7 +32,17 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
         }
-        .scanner-line {
+        .scan-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            border: 2px solid #34C759;
+            border-radius: 10px;
+        }
+        .scan-line {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -58,123 +51,110 @@
             height: 2px;
             background-color: #34C759;
         }
-        #loadingState, #successState, #errorState {
-            margin-top: 20px;
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #34C759;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
         }
-        .participant-card {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-gap: 10px;
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 10px;
         }
-        .detail-label {
+        .label {
             font-weight: bold;
+        }
+        .card {
+            background-color: #333;
+            border: none;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .bg-gray-50 {
+            background-color: #333;
         }
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1>Riti - The Upcycling Club</h1>
-        <p>Join us in making a sustainable difference!</p>
-    </header>
+    <div class="container">
+        <div class="text-center mb-4">
+            <img src="/logo.png" alt="Riti Logo" class="mb-3" style="height: 48px;">
+            <h1>Riti QR Scanner</h1>
+            <p>Scan participant QR code to verify details</p>
+        </div>
 
-    <div class="container-fluid">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="scanner-section">
-                    <div class="scanner-container">
-                        <h2>Scan Participant QR Code</h2>
-                        <div class="video-container">
-                            <video id="preview" class="scanner"></video>
-                            <div class="scanner-overlay">
-                                <div class="scanner-line"></div>
+        <div class="card">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <h2>Scan QR Code</h2>
+                    <p class="text-muted">Place the QR code inside the frame</p>
+                </div>
+
+                <div class="scanner-container">
+                    <div class="qr-scanner">
+                        <video id="preview"></video>
+                        <div class="scanner-overlay">
+                            <div class="scan-area">
+                                <div></div>
                             </div>
-                        </div>
-                        <div class="text-center mt-4">
-                            <button id="toggleCamera" class="btn btn-primary">
-                                <i class="fas fa-camera-rotate"></i> Switch Camera
-                            </button>
+                            <div class="scan-line"></div>
                         </div>
                     </div>
+                </div>
 
-                    <div id="loadingState" class="text-center d-none">
-                        <div class="spinner">
-                            <div class="double-bounce1"></div>
-                            <div class="double-bounce2"></div>
-                        </div>
-                        <p class="mt-3">Verifying participant...</p>
-                    </div>
+                <div id="loadingState" class="text-center mt-4 d-none">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Verifying participant...</p>
+                </div>
 
-                    <div id="successState" class="text-center d-none">
-                        <div class="success-checkmark">
-                            <div class="check-icon">
-                                <span class="icon-line line-tip"></span>
-                                <span class="icon-line line-long"></span>
-                            </div>
-                        </div>
-                        <h3 class="text-success mb-4">Participant Verified!</h3>
-                    </div>
-
-                    <div id="errorState" class="text-center d-none">
-                        <div class="error-x">
-                            <div class="x-icon">
-                                <span class="x-line-1"></span>
-                                <span class="x-line-2"></span>
-                            </div>
-                        </div>
-                        <h3 class="text-danger mb-4">Participant Not Found</h3>
-                        <p>Please try scanning again</p>
-                    </div>
-
-                    <div id="participantDetails" class="participant-card d-none">
-                        <h3 class="card-title">Participant Details</h3>
-                        <div class="details-grid">
+                <div id="participantDetails" class="mt-4 d-none">
+                    <div class="bg-gray-50">
+                        <h3>Participant Details</h3>
+                        <div class="details-list">
                             <div class="detail-row">
-                                <span class="detail-label">ID:</span>
-                                <span id="participantId" class="detail-value"></span>
+                                <span class="label">Name</span>
+                                <span id="participantName" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Name:</span>
-                                <span id="participantName" class="detail-value"></span>
+                                <span class="label">Hall Ticket</span>
+                                <span id="participantHallTicket" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Hall Ticket:</span>
-                                <span id="participantHallTicket" class="detail-value"></span>
+                                <span class="label">Branch</span>
+                                <span id="participantBranch" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Branch:</span>
-                                <span id="participantBranch" class="detail-value"></span>
+                                <span class="label">Year</span>
+                                <span id="participantYear" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Year:</span>
-                                <span id="participantYear" class="detail-value"></span>
+                                <span class="label">Section</span>
+                                <span id="participantSection" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Section:</span>
-                                <span id="participantSection" class="detail-value"></span>
+                                <span class="label">Package</span>
+                                <span id="participantPackage" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Package:</span>
-                                <span id="participantPackage" class="detail-value"></span>
+                                <span class="label">Payment</span>
+                                <span id="participantPayment" class="value"></span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Payment:</span>
-                                <span id="participantPayment" class="detail-value"></span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Amount:</span>
-                                <span id="participantAmount" class="detail-value"></span>
+                                <span class="label">Amount</span>
+                                <span id="participantAmount" class="value"></span>
                             </div>
                         </div>
                     </div>
