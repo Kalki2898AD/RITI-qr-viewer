@@ -1,128 +1,126 @@
-// Initialize scanner when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    let scanner = null;
-    const preview = document.getElementById('preview');
-    const loading = document.getElementById('loading');
-    const result = document.getElementById('result');
-    const successAnimation = document.getElementById('success-animation');
-    const errorAnimation = document.getElementById('error-animation');
-    const scanAgainBtn = document.getElementById('scanAgain');
+// Initialize scanner
+let scanner = null;
+let currentCamera = 0;
 
-    // Initialize the QR scanner
-    function initializeScanner() {
-        // Hide result container and show scanner
-        result.classList.add('d-none');
-        preview.style.display = 'block';
-        
-        // Create new scanner instance
+// Elements
+const videoPreview = document.getElementById('preview');
+const toggleButton = document.getElementById('toggleCamera');
+const loadingState = document.getElementById('loading');
+const successState = document.getElementById('success-animation');
+const errorState = document.getElementById('error-animation');
+const participantDetails = document.getElementById('result');
+
+// Detail elements
+const participantId = document.getElementById('participantId');
+const participantName = document.getElementById('participantName');
+const participantHallTicket = document.getElementById('participantHallTicket');
+const participantBranch = document.getElementById('participantBranch');
+const participantYear = document.getElementById('participantYear');
+const participantSection = document.getElementById('participantSection');
+const participantPackage = document.getElementById('participantPackage');
+const participantPayment = document.getElementById('participantPayment');
+const participantAmount = document.getElementById('participantAmount');
+
+// Initialize scanner
+async function initializeScanner() {
+    try {
         scanner = new Instascan.Scanner({
-            video: preview,
+            video: videoPreview,
             mirror: false
         });
 
-        // Handle successful scans
-        scanner.addListener('scan', async function(qrContent) {
-            try {
-                // Show loading overlay
-                loading.classList.remove('d-none');
-                
-                // Parse QR data
-                const qrData = JSON.parse(qrContent);
-                
-                // Verify participant
-                const response = await verifyParticipant(qrData.id);
-                
-                // Hide scanner and loading
-                preview.style.display = 'none';
-                loading.classList.add('d-none');
-                
-                // Display result
-                displayResult(response);
-                
-                // Stop scanner
-                if (scanner) {
-                    scanner.stop();
-                }
-            } catch (error) {
-                console.error('Error processing QR code:', error);
-                showError('Invalid QR code or verification failed');
-            }
-        });
-
-        // Start camera
-        Instascan.Camera.getCameras().then(cameras => {
-            if (cameras.length > 0) {
-                // Try to use the back camera first
-                const backCamera = cameras.find(camera => camera.name.toLowerCase().includes('back'));
-                scanner.start(backCamera || cameras[0]);
-            } else {
-                console.error('No cameras found');
-                alert('No cameras found on your device');
-            }
-        }).catch(err => {
-            console.error('Error accessing camera:', err);
-            alert('Error accessing camera. Please make sure you have granted camera permissions.');
-        });
-    }
-
-    // Verify participant with server
-    async function verifyParticipant(participantId) {
-        try {
-            const response = await fetch(`/api/participant/${participantId}`);
-            if (!response.ok) {
-                throw new Error('Verification failed');
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error verifying participant:', error);
-            throw error;
-        }
-    }
-
-    // Display verification result
-    function displayResult(response) {
-        // Show result container
-        result.classList.remove('d-none');
+        const cameras = await Instascan.Camera.getCameras();
         
-        if (response.success) {
-            // Show success animation
-            successAnimation.classList.remove('d-none');
-            errorAnimation.classList.add('d-none');
+        if (cameras.length > 0) {
+            // Try to use the back camera first
+            const backCamera = cameras.find(camera => camera.name.toLowerCase().includes('back'));
+            await scanner.start(backCamera || cameras[currentCamera]);
             
-            // Update participant details
-            document.getElementById('participantId').textContent = response.participant.id;
-            document.getElementById('participantName').textContent = response.participant.name;
-            document.getElementById('participantHallTicket').textContent = response.participant.hallTicket;
-            document.getElementById('participantPackage').textContent = response.participant.selectedPackage;
-            document.getElementById('participantPayment').textContent = response.participant.paymentMethod;
+            if (cameras.length > 1) {
+                toggleButton.style.display = 'block';
+                toggleButton.onclick = () => {
+                    currentCamera = (currentCamera + 1) % cameras.length;
+                    scanner.start(cameras[currentCamera]);
+                };
+            } else {
+                toggleButton.style.display = 'none';
+            }
         } else {
-            showError('Participant not found');
+            console.error('No cameras found.');
+            alert('No cameras found on your device.');
         }
-    }
 
-    // Show error state
-    function showError(message) {
-        result.classList.remove('d-none');
-        successAnimation.classList.add('d-none');
-        errorAnimation.classList.remove('d-none');
-        preview.style.display = 'none';
-        loading.classList.add('d-none');
+        // Handle successful scans
+        scanner.addListener('scan', handleScan);
+    } catch (error) {
+        console.error('Error initializing scanner:', error);
+        alert('Error initializing camera. Please make sure you have given camera permissions.');
+    }
+}
+
+// Handle QR code scan
+async function handleScan(qrContent) {
+    try {
+        showLoading();
         
-        // Clear participant details
-        document.getElementById('participantId').textContent = '';
-        document.getElementById('participantName').textContent = '';
-        document.getElementById('participantHallTicket').textContent = '';
-        document.getElementById('participantPackage').textContent = '';
-        document.getElementById('participantPayment').textContent = '';
+        // Parse QR data
+        const qrData = JSON.parse(qrContent);
+        
+        // Call API to verify participant
+        const response = await fetch(`/api/participant/${qrData.id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess();
+            displayParticipantDetails(data.participant);
+        } else {
+            showError();
+        }
+    } catch (error) {
+        console.error('Error verifying participant:', error);
+        showError();
     }
+}
 
-    // Handle scan again button
-    scanAgainBtn.addEventListener('click', function() {
-        successAnimation.classList.add('d-none');
-        errorAnimation.classList.add('d-none');
-        initializeScanner();
-    });
+// Display functions
+function showLoading() {
+    loadingState.classList.remove('d-none');
+    successState.classList.add('d-none');
+    errorState.classList.add('d-none');
+    participantDetails.classList.add('d-none');
+}
 
-    // Initialize scanner on page load
-    initializeScanner();
-});
+function showSuccess() {
+    loadingState.classList.add('d-none');
+    successState.classList.remove('d-none');
+    errorState.classList.add('d-none');
+    participantDetails.classList.remove('d-none');
+}
+
+function showError() {
+    loadingState.classList.add('d-none');
+    successState.classList.add('d-none');
+    errorState.classList.remove('d-none');
+    participantDetails.classList.add('d-none');
+    
+    // Reset error state after 3 seconds
+    setTimeout(() => {
+        errorState.classList.add('d-none');
+    }, 3000);
+}
+
+// Display participant details
+function displayParticipantDetails(participant) {
+    participantId.textContent = participant.id;
+    participantName.textContent = participant.name;
+    participantHallTicket.textContent = participant.hallTicket;
+    participantBranch.textContent = participant.branch;
+    participantYear.textContent = participant.year;
+    participantSection.textContent = participant.section;
+    participantPackage.textContent = participant.selectedPackage;
+    participantPayment.textContent = participant.paymentMethod;
+    participantAmount.textContent = participant.amount;
+}
+
+// Initialize scanner when page loads
+document.addEventListener('DOMContentLoaded', initializeScanner);
