@@ -24,6 +24,16 @@ body {
     aspect-ratio: 4/3;
 }
 
+/* Start Button */
+#startButton {
+    padding: 2rem;
+}
+
+#startButton button {
+    font-size: 1.2rem;
+    padding: 1rem 2rem;
+}
+
 /* QR Scanner */
 #qr-reader {
     width: 100% !important;
@@ -32,51 +42,41 @@ body {
     background: #000 !important;
 }
 
-#qr-reader__scan_region {
-    padding: 0 !important;
+#qr-reader video {
+    width: 100% !important;
+    max-height: 70vh !important;
+    object-fit: cover !important;
 }
 
-#qr-reader__scan_region > img {
-    width: 250px !important;
-    height: 250px !important;
-    opacity: 0.5 !important;
-}
-
-#qr-reader__dashboard {
-    padding: 10px !important;
-    background: rgba(0, 0, 0, 0.7) !important;
-    border: none !important;
-}
-
-#qr-reader__dashboard_section {
-    padding: 0 !important;
-    border: none !important;
-}
-
-#qr-reader__dashboard_section_csr button {
-    padding: 8px 16px !important;
-    background: #22c55e !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 4px !important;
-    margin: 5px !important;
+/* Hide default QR reader elements */
+#qr-reader__status_span {
+    display: none !important;
 }
 
 #qr-reader__camera_selection {
-    width: 100% !important;
-    padding: 8px !important;
-    background: #3f3f3f !important;
-    color: white !important;
-    border: 1px solid #4f4f4f !important;
-    border-radius: 4px !important;
-    margin: 5px 0 !important;
+    display: none !important;
 }
 
-#qr-reader__status_span {
-    background: transparent !important;
-    color: #a0a0a0 !important;
-    font-size: 14px !important;
-    padding: 5px !important;
+#qr-reader__dashboard_section_swaplink {
+    display: none !important;
+}
+
+#qr-reader__dashboard_section_csr {
+    text-align: center !important;
+    margin: 10px 0 !important;
+}
+
+#qr-reader__dashboard_section_csr > div {
+    margin: 10px 0 !important;
+}
+
+#qr-reader__dashboard_section_csr button {
+    background: #22c55e !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
 }
 
 /* Loading and error states */
@@ -171,6 +171,10 @@ body {
     
     .row.g-3 {
         --bs-gutter-y: 0.5rem;
+    }
+
+    #startButton {
+        padding: 1rem;
     }
 }
 
