@@ -19,26 +19,53 @@ const participantPayment = document.getElementById('participantPayment');
 const participantAmount = document.getElementById('participantAmount');
 
 // Start scanner when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    // Create scanner instance
-    scanner = new Instascan.Scanner({
-        video: videoPreview,
-        mirror: false,
-        backgroundScan: false,
-        continuous: true
-    });
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // First request camera permission explicitly
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'environment' // Prefer back camera
+            } 
+        });
+        
+        // Stop the stream immediately as Instascan will request it again
+        stream.getTracks().forEach(track => track.stop());
 
-    // Handle successful scans
-    scanner.addListener('scan', handleQRScan);
+        // Create scanner instance
+        scanner = new Instascan.Scanner({
+            video: videoPreview,
+            mirror: false,
+            backgroundScan: false,
+            continuous: true
+        });
 
-    // Start camera with back camera first
-    Instascan.Camera.getCameras().then(cameras => {
+        // Handle successful scans
+        scanner.addListener('scan', handleQRScan);
+
+        // Start camera with back camera first
+        const cameras = await Instascan.Camera.getCameras();
         if (cameras.length > 0) {
             // Try to get the back camera
             const backCamera = cameras.find(camera => camera.name.toLowerCase().includes('back')) || cameras[0];
-            scanner.start(backCamera).catch(console.error);
+            await scanner.start(backCamera);
+        } else {
+            throw new Error('No cameras found');
         }
-    }).catch(console.error);
+    } catch (error) {
+        console.error('Camera error:', error);
+        // Show error message based on the error type
+        let errorMessage = 'Error accessing camera. ';
+        if (error.name === 'NotAllowedError') {
+            errorMessage += 'Please allow camera access to scan QR codes.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += 'No camera found on your device.';
+        } else if (!window.isSecureContext) {
+            errorMessage += 'Camera access requires HTTPS. Please use a secure connection.';
+        } else {
+            errorMessage += 'Please make sure you have given camera permissions and are using HTTPS.';
+        }
+        alert(errorMessage);
+    }
 });
 
 // Handle QR code scan
@@ -87,6 +114,9 @@ async function handleQRScan(content) {
         // Play error sound
         const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SEhISEhUVFRUVGBgYGBgbGxsbGx4eHh4eISEhISEkJCQkJCcnJycnKioqKiourq6urq6urq6xsbGxsbS0tLS0t7e3t7e6urq6ur29vb29v8AAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV');
         audio.play();
+        
+        // Show error message
+        alert('Error scanning QR code. Please try again.');
     }
 }
 
